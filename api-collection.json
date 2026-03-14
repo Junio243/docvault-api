@@ -1,0 +1,204 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2024-01-15T10:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.0",
+  "resources": [
+    {
+      "_id": "req_auth_signup",
+      "parentId": "fld_auth",
+      "_type": "request",
+      "name": "Signup",
+      "url": "{{base_url}}/auth/signup",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"usuario@exemplo.com\",\n  \"password\": \"senha123\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ]
+    },
+    {
+      "_id": "req_auth_login",
+      "parentId": "fld_auth",
+      "_type": "request",
+      "name": "Login",
+      "url": "{{base_url}}/auth/login",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"usuario@exemplo.com\",\n  \"password\": \"senha123\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ]
+    },
+    {
+      "_id": "req_auth_me",
+      "parentId": "fld_auth",
+      "_type": "request",
+      "name": "Me",
+      "url": "{{base_url}}/auth/me",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_auth_logout",
+      "parentId": "fld_auth",
+      "_type": "request",
+      "name": "Logout",
+      "url": "{{base_url}}/auth/logout",
+      "method": "POST",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_documents_list",
+      "parentId": "fld_documents",
+      "_type": "request",
+      "name": "List Documents",
+      "url": "{{base_url}}/documents?page=1&limit=10",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_documents_create",
+      "parentId": "fld_documents",
+      "_type": "request",
+      "name": "Create Document",
+      "url": "{{base_url}}/documents",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          { "name": "title", "value": "Contrato de Serviços" },
+          { "name": "status", "value": "draft" },
+          { "name": "file", "type": "file", "fileName": "contrato.pdf" }
+        ]
+      },
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_documents_get",
+      "parentId": "fld_documents",
+      "_type": "request",
+      "name": "Get Document",
+      "url": "{{base_url}}/documents/{{document_id}}",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_documents_update",
+      "parentId": "fld_documents",
+      "_type": "request",
+      "name": "Update Document",
+      "url": "{{base_url}}/documents/{{document_id}}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          { "name": "title", "value": "Contrato Atualizado" },
+          { "name": "status", "value": "pending" },
+          { "name": "change_notes", "value": "Atualização de valores" }
+        ]
+      },
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_documents_delete",
+      "parentId": "fld_documents",
+      "_type": "request",
+      "name": "Delete Document",
+      "url": "{{base_url}}/documents/{{document_id}}",
+      "method": "DELETE",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_versions_list",
+      "parentId": "fld_versions",
+      "_type": "request",
+      "name": "List Versions",
+      "url": "{{base_url}}/documents/{{document_id}}/versions",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_verify_post",
+      "parentId": "fld_verify",
+      "_type": "request",
+      "name": "Verify Hash (POST)",
+      "url": "{{base_url}}/documents/{{document_id}}/verify",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          { "name": "file", "type": "file", "fileName": "documento.pdf" }
+        ]
+      },
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "req_verify_get",
+      "parentId": "fld_verify",
+      "_type": "request",
+      "name": "Get Hash Info",
+      "url": "{{base_url}}/documents/{{document_id}}/verify",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{access_token}}" }
+      ]
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_docvault",
+      "_type": "request_group",
+      "name": "🔐 Auth"
+    },
+    {
+      "_id": "fld_documents",
+      "parentId": "wrk_docvault",
+      "_type": "request_group",
+      "name": "📄 Documents"
+    },
+    {
+      "_id": "fld_versions",
+      "parentId": "wrk_docvault",
+      "_type": "request_group",
+      "name": "📜 Versions"
+    },
+    {
+      "_id": "fld_verify",
+      "parentId": "wrk_docvault",
+      "_type": "request_group",
+      "name": "🔐 Verify"
+    },
+    {
+      "_id": "wrk_docvault",
+      "_type": "workspace",
+      "name": "DocVault API",
+      "environment": {
+        "base_url": "http://localhost:3000/api",
+        "access_token": "",
+        "document_id": ""
+      }
+    }
+  ]
+}
