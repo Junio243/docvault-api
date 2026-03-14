@@ -513,4 +513,4 @@ Desenvolvido como desafio técnico de full-stack com foco em segurança e cloud.
 
 ## 📞 Suporte
 
-Para dúvidas ou problemas, abra uma issue no repositório.
+Para dúvidas ou problemas, abra uma issue no repositório.\"# Deploy timestamp: $(date)\" 
