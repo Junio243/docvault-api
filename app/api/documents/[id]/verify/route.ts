@@ -1,3 +1,7 @@
+import type { Database } from '@/types/supabase';
+
+type DocRow = Database['public']['Tables']['documents']['Row'];
+type VersionRow = Database['public']['Tables']['document_versions']['Row'];
 import { NextRequest } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
@@ -33,12 +37,12 @@ export async function POST(
       return commonErrors.notFound('Documento');
     }
 
-    if ((document as any).owner_id !== user.id) {
+    if ((document as DocRow).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
     // Verifica se o documento tem hash registrado
-    if (!(document as any).file_hash) {
+    if (!(document as DocRow).file_hash) {
       return errorResponse(
         'NO_HASH_REGISTERED',
         'Este documento não possui hash registrado para verificação',
@@ -67,13 +71,13 @@ export async function POST(
     const providedHash = generateFileHash(buffer);
 
     // Compara os hashes (timing-safe)
-    const isValid = compareHashes((document as any).file_hash, providedHash);
+    const isValid = compareHashes((document as DocRow).file_hash || '', providedHash);
 
     const result: VerifyDocumentResponse = {
       valid: isValid,
       document_id: id,
-      version: (document as any).version,
-      stored_hash: (document as any).file_hash,
+      version: (document as DocRow).version,
+      stored_hash: (document as DocRow).file_hash || '',
       provided_hash: providedHash,
       message: isValid 
         ? 'Integridade verificada: O arquivo é idêntico ao registrado'
@@ -116,19 +120,19 @@ export async function GET(
       return commonErrors.notFound('Documento');
     }
 
-    if ((document as any).owner_id !== user.id) {
+    if ((document as DocRow).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
     return successResponse({
-      document_id: (document as any).id,
-      title: (document as any).title,
-      version: (document as any).version,
-      file_hash: (document as any).file_hash,
-      file_url: (document as any).file_url,
-      updated_at: (document as any).updated_at,
-      has_hash: !!(document as any).file_hash,
-      message: (document as any).file_hash 
+      document_id: (document as DocRow).id,
+      title: (document as DocRow).title,
+      version: (document as DocRow).version,
+      file_hash: (document as DocRow).file_hash,
+      file_url: (document as DocRow).file_url,
+      updated_at: (document as DocRow).updated_at,
+      has_hash: !!(document as DocRow).file_hash,
+      message: (document as DocRow).file_hash 
         ? 'Documento possui hash SHA-256 registrado'
         : 'Documento não possui hash registrado',
     });

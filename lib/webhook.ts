@@ -47,6 +47,7 @@ export async function triggerWebhook(
         'Content-Type': 'application/json',
         'X-Webhook-Signature': signature,
         'X-Webhook-Event': event,
+        'X-Webhook-Secret': webhookSecret,
       },
       body: payloadString,
     });

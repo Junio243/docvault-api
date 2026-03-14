@@ -1,3 +1,7 @@
+import type { Database } from '@/types/supabase';
+
+type DocRow = Database['public']['Tables']['documents']['Row'];
+type VersionRow = Database['public']['Tables']['document_versions']['Row'];
 import { NextRequest } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
@@ -31,7 +35,7 @@ export async function GET(
       return commonErrors.notFound('Documento');
     }
 
-    if ((document as any).owner_id !== user.id) {
+    if ((document as DocRow).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 

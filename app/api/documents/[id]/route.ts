@@ -7,6 +7,10 @@ import { triggerWebhook, triggerDocumentSignedWebhook } from '@/lib/webhook';
 import { successResponse, errorResponse, commonErrors } from '@/lib/api-response';
 import { DocumentStatus, WebhookEvent } from '@/types';
 import { z } from 'zod';
+import type { Database } from '@/types/supabase';
+
+type DocRow = Database['public']['Tables']['documents']['Row'];
+type VersionRow = Database['public']['Tables']['document_versions']['Row'];
 
 const updateDocumentSchema = z.object({
   title: z.string().min(1).max(255).optional(),
@@ -41,7 +45,7 @@ export async function GET(
     }
 
     // Verifica se usuário é o dono
-    if ((document as any).owner_id !== user.id) {
+    if ((document as DocRow).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
@@ -82,7 +86,7 @@ export async function PATCH(
     }
 
     // Verifica se usuário é o dono
-    if ((existingDoc as any).owner_id !== user.id) {
+    if ((existingDoc as DocRow).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
@@ -93,10 +97,10 @@ export async function PATCH(
     const changeNotes = formData.get('change_notes') as string | null;
 
     const updates: Record<string, unknown> = {};
-    let newVersion = (existingDoc as any).version;
-    let newFileHash = (existingDoc as any).file_hash;
-    let newFileUrl = (existingDoc as any).file_url;
-    let newFilePath = (existingDoc as any).file_path;
+    let newVersion = (existingDoc as DocRow).version;
+    let newFileHash = (existingDoc as DocRow).file_hash;
+    let newFileUrl = (existingDoc as DocRow).file_url;
+    let newFilePath = (existingDoc as DocRow).file_path;
 
     // Processa novo arquivo se fornecido
     if (file) {
@@ -120,17 +124,17 @@ export async function PATCH(
       newFilePath = uploadResult.path;
 
       // Incrementa versão
-      newVersion = (existingDoc as any).version + 1;
+      newVersion = (existingDoc as DocRow).version + 1;
 
       // Cria registro de versão anterior
       const { error: versionError } = await supabase
         .from('document_versions')
         .insert({
           document_id: id,
-          version: (existingDoc as any).version,
-          file_url: (existingDoc as any).file_url,
-          file_path: (existingDoc as any).file_path,
-          file_hash: (existingDoc as any).file_hash,
+          version: (existingDoc as DocRow).version,
+          file_url: (existingDoc as DocRow).file_url,
+          file_path: (existingDoc as DocRow).file_path,
+          file_hash: (existingDoc as DocRow).file_hash,
           created_by: user.id,
           change_notes: changeNotes || `Atualização para versão ${newVersion}`,
         });
@@ -144,7 +148,7 @@ export async function PATCH(
         WebhookEvent.VERSION_CREATED,
         id,
         {
-          previous_version: (existingDoc as any).version,
+          previous_version: (existingDoc as DocRow).version,
           new_version: newVersion,
           change_notes: changeNotes,
         }
@@ -166,7 +170,7 @@ export async function PATCH(
       updates.status = status;
 
       // Se o status mudou para signed, dispara webhook
-      if (status === 'signed' && (existingDoc as any).status !== 'signed') {
+      if (status === 'signed' && (existingDoc as DocRow).status !== 'signed') {
         await triggerDocumentSignedWebhook(
           id,
           user.id,
@@ -238,7 +242,7 @@ export async function DELETE(
     }
 
     // Verifica se usuário é o dono
-    if ((document as any).owner_id !== user.id) {
+    if ((document as DocRow).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
@@ -253,9 +257,9 @@ export async function DELETE(
     }
 
     // Deleta arquivos do storage
-    const filesToDelete = [(document as any).file_path];
+    const filesToDelete = [(document as DocRow).file_path];
     if (versions) {
-      filesToDelete.push(...(versions as any[]).map(v => (v as any).file_path));
+      filesToDelete.push(...(versions as VersionRow[]).map(v => (v as VersionRow).file_path));
     }
 
     // Deleta arquivos únicos
@@ -290,7 +294,7 @@ export async function DELETE(
       WebhookEvent.DOCUMENT_DELETED,
       id,
       {
-        title: (document as any).title,
+        title: (document as DocRow).title,
         deleted_by: user.id,
       }
     );

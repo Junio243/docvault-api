@@ -7,6 +7,10 @@ import { triggerWebhook } from '@/lib/webhook';
 import { successResponse, errorResponse, commonErrors } from '@/lib/api-response';
 import { DocumentStatus, WebhookEvent } from '@/types';
 import { z } from 'zod';
+import type { Database } from '@/types/supabase';
+
+type DocRow = Database['public']['Tables']['documents']['Row'];
+type VersionRow = Database['public']['Tables']['document_versions']['Row'];
 
 const createDocumentSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório').max(255, 'Título muito longo'),
@@ -84,16 +88,24 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const title = formData.get('title') as string;
-    const status = (formData.get('status') as string) || 'draft';
+    
+    // Validação de dados com Zod
+    const rawData = {
+      title: formData.get('title'),
+      status: formData.get('status') || 'draft',
+    };
+    
+    const parsed = createDocumentSchema.safeParse(rawData);
+    
+    if (!parsed.success) {
+      return commonErrors.validationError(parsed.error.flatten().fieldErrors);
+    }
+    
+    const { title, status } = parsed.data;
 
-    // Validação
+    // Validação do arquivo
     if (!file) {
       return errorResponse('FILE_REQUIRED', 'Arquivo é obrigatório', 400);
-    }
-
-    if (!title) {
-      return errorResponse('TITLE_REQUIRED', 'Título é obrigatório', 400);
     }
 
     // Valida tipo do arquivo
@@ -158,10 +170,10 @@ export async function POST(request: NextRequest) {
     // Dispara webhook
     await triggerWebhook(
       WebhookEvent.DOCUMENT_CREATED,
-      (document as any).id,
+      (document as DocRow).id,
       {
-        title: (document as any).title,
-        status: (document as any).status,
+        title: (document as DocRow).title,
+        status: (document as DocRow).status,
         file_hash: fileHash,
       }
     );
