@@ -259,7 +259,7 @@ export async function DELETE(
     }
 
     // Deleta arquivos únicos
-    const uniqueFiles = [...new Set(filesToDelete)];
+    const uniqueFiles = Array.from(new Set(filesToDelete));
     for (const filePath of uniqueFiles) {
       try {
         await deleteFile(filePath);
