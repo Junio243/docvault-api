@@ -43,21 +43,4 @@ export async function requireOwnership(ownerId: string): Promise<void> {
     throw new Error('FORBIDDEN');
   }
 }
-
-/**
- * Gera token JWT para usuário (para sessões customizadas)
- */
-export async function generateJWT(userId: string): Promise<string> {
-  const supabase = createServerSupabaseClient();
-  
-  const { data, error } = await supabase.auth.admin.createUser({
-    id: userId,
-    app_metadata: { provider: 'email' },
-  });
-
-  if (error) {
-    throw new Error(`Erro ao gerar token: ${error.message}`);
-  }
-
-  return data.user?.id || '';
-}
+
