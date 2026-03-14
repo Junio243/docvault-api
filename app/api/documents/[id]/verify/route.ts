@@ -33,12 +33,12 @@ export async function POST(
       return commonErrors.notFound('Documento');
     }
 
-    if (document.owner_id !== user.id) {
+    if ((document as any).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
     // Verifica se o documento tem hash registrado
-    if (!document.file_hash) {
+    if (!(document as any).file_hash) {
       return errorResponse(
         'NO_HASH_REGISTERED',
         'Este documento não possui hash registrado para verificação',
@@ -67,13 +67,13 @@ export async function POST(
     const providedHash = generateFileHash(buffer);
 
     // Compara os hashes (timing-safe)
-    const isValid = compareHashes(document.file_hash, providedHash);
+    const isValid = compareHashes((document as any).file_hash, providedHash);
 
     const result: VerifyDocumentResponse = {
       valid: isValid,
       document_id: id,
-      version: document.version,
-      stored_hash: document.file_hash,
+      version: (document as any).version,
+      stored_hash: (document as any).file_hash,
       provided_hash: providedHash,
       message: isValid 
         ? 'Integridade verificada: O arquivo é idêntico ao registrado'
@@ -116,19 +116,19 @@ export async function GET(
       return commonErrors.notFound('Documento');
     }
 
-    if (document.owner_id !== user.id) {
+    if ((document as any).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 
     return successResponse({
-      document_id: document.id,
-      title: document.title,
-      version: document.version,
-      file_hash: document.file_hash,
-      file_url: document.file_url,
-      updated_at: document.updated_at,
-      has_hash: !!document.file_hash,
-      message: document.file_hash 
+      document_id: (document as any).id,
+      title: (document as any).title,
+      version: (document as any).version,
+      file_hash: (document as any).file_hash,
+      file_url: (document as any).file_url,
+      updated_at: (document as any).updated_at,
+      has_hash: !!(document as any).file_hash,
+      message: (document as any).file_hash 
         ? 'Documento possui hash SHA-256 registrado'
         : 'Documento não possui hash registrado',
     });

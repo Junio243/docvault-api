@@ -31,7 +31,7 @@ export async function GET(
       return commonErrors.notFound('Documento');
     }
 
-    if (document.owner_id !== user.id) {
+    if ((document as any).owner_id !== user.id) {
       return commonErrors.forbidden();
     }
 

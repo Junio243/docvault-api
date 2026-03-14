@@ -158,10 +158,10 @@ export async function POST(request: NextRequest) {
     // Dispara webhook
     await triggerWebhook(
       WebhookEvent.DOCUMENT_CREATED,
-      document.id,
+      (document as any).id,
       {
-        title: document.title,
-        status: document.status,
+        title: (document as any).title,
+        status: (document as any).status,
         file_hash: fileHash,
       }
     );
