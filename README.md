@@ -1,39 +1,76 @@
 # 📄 DocVault API
 
-API REST de gerenciamento de documentos com autenticação JWT, upload de PDF, versionamento e verificação de integridade via hash SHA-256.
+API REST completa para gerenciamento seguro de documentos — com autenticação JWT, upload de PDF, versionamento automático, verificação de integridade via hash SHA-256, rate limiting e dashboard web.
+
+🔗 **Demo em produção:** [docvault-api-cl21.vercel.app](https://docvault-api-cl21.vercel.app)
+
+---
 
 ## 🚀 Stack
 
-- **Next.js 14+** (App Router) com TypeScript
-- **Supabase** - Banco de dados + Autenticação + Storage
-- **Vercel** - Deploy
+| Camada | Tecnologia |
+|---|---|
+| Framework | Next.js 14+ (App Router) + TypeScript |
+| Banco de dados | Supabase (PostgreSQL) |
+| Autenticação | Supabase Auth (JWT) |
+| Storage | Supabase Storage |
+| Rate Limiting | Upstash Redis |
+| Testes | Vitest + Testing Library |
+| Deploy | Vercel |
 
-## 📋 Funcionalidades
+---
 
-### ✅ Fase 1 - Core
-- [x] Autenticação com JWT via Supabase Auth (email + senha)
-- [x] Upload de arquivos PDF para Supabase Storage
-- [x] CRUD completo de documentos
-- [x] Cada documento tem: id, title, owner_id, file_url, created_at, status
+## ✨ Funcionalidades
 
-### ✅ Fase 2 - Intermediário
-- [x] Versionamento: ao fazer upload de um novo PDF, salva histórico de versões
-- [x] Endpoint `GET /api/documents/:id/versions` retornando todas as versões
-- [x] Middleware de autorização: só o dono pode editar/deletar seu documento
+### 🔐 Autenticação
+- Registro e login com email + senha
+- Sessões JWT via Supabase Auth
+- Middleware de autenticação em todas as rotas protegidas
+- Renovação automática de tokens
 
-### ✅ Fase 3 - Avançado
-- [x] Gera hash SHA-256 do arquivo no upload e salva no banco
-- [x] Endpoint `GET /api/documents/:id/verify` que recebe arquivo e verifica hash
-- [x] Webhook que dispara eventos quando documento é assinado
+### 📄 Documentos
+- Upload de PDFs (máx. 10MB)
+- CRUD completo com autorização por ownership
+- Filtros por status e busca por título
+- Paginação configurável
+
+### 🗂️ Versionamento
+- Histórico automático a cada novo upload
+- Rastreio de quem criou cada versão e notas de mudança
+
+### 🔒 Integridade
+- Hash SHA-256 gerado no upload e salvo no banco
+- Endpoint de verificação: compara o hash do arquivo enviado com o registrado
+- Comparação timing-safe para evitar timing attacks
+
+### 🔗 Webhooks
+- Eventos automaticamente disparados: `document.created`, `document.updated`, `document.deleted`, `document.signed`, `version.created`
+- Assinatura HMAC-SHA256 em todos os payloads
+- Endpoint receptor protegido por `X-Webhook-Secret`
+
+### 🛡️ Rate Limiting
+- Limitação por IP via Upstash Redis (sliding window)
+- Rotas de autenticação: **10 req/min**
+- Demais rotas: **60 req/min**
+- Headers informativos: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+- Fail-open: se o Redis estiver indisponível, a API continua funcionando
+
+### 🖥️ Dashboard
+- Interface web completa acessível em `/`
+- Login e cadastro integrados
+- Listagem, busca e atualização de status de documentos
+- Drag-and-drop para upload
+- Verificação de integridade visual
+- Notificações toast em tempo real
 
 ---
 
 ## 🛠️ Setup Local
 
-### 1. Clone e Instale
+### 1. Clone e instale
 
 ```bash
-git clone https://github.com/seu-usuario/docvault-api.git
+git clone https://github.com/Junio243/docvault-api.git
 cd docvault-api
 npm install
 ```
@@ -41,33 +78,63 @@ npm install
 ### 2. Configure o Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
-2. Vá em **SQL Editor** → **New query**
+2. Vá em **SQL Editor → New query**
 3. Cole e execute o conteúdo de [`supabase/schema.sql`](supabase/schema.sql)
-4. Crie um bucket de storage chamado `documents` (público: false)
-5. Configure as políticas de storage (instruções no arquivo schema.sql)
+   > O script cria as tabelas, índices, políticas RLS e o bucket de storage automaticamente.
 
-### 3. Configure as Variáveis de Ambiente
+### 3. Configure as variáveis de ambiente
 
 ```bash
 cp .env.example .env.local
 ```
 
-Edite `.env.local` com suas credenciais do Supabase:
+Edite `.env.local`:
 
 ```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Webhook
+WEBHOOK_SECRET=uma-string-secreta-qualquer
+
+# Upstash Redis — Rate Limiting (opcional)
+# Crie grátis em https://console.upstash.com/redis
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=...
 ```
 
-### 4. Rode o Projeto
+> **Nota:** As variáveis do Upstash são opcionais. Sem elas, o rate limiting é desativado silenciosamente e tudo continua funcionando.
+
+### 4. Rode
 
 ```bash
 npm run dev
 ```
 
-Acesse: http://localhost:3000
+Acesse: [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 🧪 Testes
+
+```bash
+# Rodar todos os testes
+npm test
+
+# Modo watch (re-executa ao salvar)
+npm run test:watch
+
+# Com relatório de cobertura
+npm run test:coverage
+```
+
+**Cobertura atual:** 26 testes passando em 3 suites:
+- `tests/lib/crypto.test.ts` — hash SHA-256, HMAC, tokens
+- `tests/lib/api-response.test.ts` — helpers de resposta padronizada
+- `tests/api/documents.test.ts` — rota de listagem de documentos
 
 ---
 
@@ -76,13 +143,13 @@ Acesse: http://localhost:3000
 ### Base URL
 
 ```
-Local: http://localhost:3000/api
-Produção: https://seu-app.vercel.app/api
+Local:     http://localhost:3000/api
+Produção:  https://docvault-api-cl21.vercel.app/api
 ```
 
 ### Autenticação
 
-Todas as rotas (exceto auth) requerem autenticação via Bearer Token:
+Todas as rotas protegidas requerem o cookie de sessão Supabase (gerenciado automaticamente pelo browser) ou Bearer Token:
 
 ```http
 Authorization: Bearer <access_token>
@@ -90,18 +157,18 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 🔐 Autenticação
+## 🔐 Auth
 
-### Registrar Usuário
+### `POST /api/auth/signup`
 
-```http
-POST /auth/signup
-Content-Type: application/json
+```json
+{ "email": "usuario@exemplo.com", "password": "senha123" }
+```
 
-{
-  "email": "usuario@exemplo.com",
-  "password": "senha123"
-}
+### `POST /api/auth/login`
+
+```json
+{ "email": "usuario@exemplo.com", "password": "senha123" }
 ```
 
 **Resposta:**
@@ -109,37 +176,10 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "user": {
-      "id": "uuid",
-      "email": "usuario@exemplo.com",
-      "created_at": "2024-01-15T10:30:00Z"
-    },
-    "message": "Usuário criado com sucesso. Verifique seu email para confirmar."
-  }
-}
-```
-
-### Login
-
-```http
-POST /auth/login
-Content-Type: application/json
-
-{
-  "email": "usuario@exemplo.com",
-  "password": "senha123"
-}
-```
-
-**Resposta:**
-```json
-{
-  "success": true,
-  "data": {
-    "user": { ... },
+    "user": { "id": "uuid", "email": "...", "created_at": "..." },
     "session": {
-      "access_token": "jwt-token",
-      "refresh_token": "refresh-token",
+      "access_token": "...",
+      "refresh_token": "...",
       "expires_at": 1234567890,
       "expires_in": 3600
     }
@@ -147,179 +187,51 @@ Content-Type: application/json
 }
 ```
 
-### Refresh Token
-
-```http
-POST /auth/refresh
-Content-Type: application/json
-
-{
-  "refresh_token": "refresh-token"
-}
-```
-
-### Logout
-
-```http
-POST /auth/logout
-Authorization: Bearer <token>
-```
-
-### Obter Usuário Atual
-
-```http
-GET /auth/me
-Authorization: Bearer <token>
-```
+### `POST /api/auth/logout`
+### `POST /api/auth/refresh` — `{ "refresh_token": "..." }`
+### `GET  /api/auth/me`
 
 ---
 
 ## 📄 Documentos
 
-### Listar Documentos
+### `GET /api/documents`
 
-```http
-GET /documents?page=1&limit=10&status=draft&search=contrato
-Authorization: Bearer <token>
-```
+| Param | Tipo | Default | Descrição |
+|---|---|---|---|
+| `page` | number | `1` | Página |
+| `limit` | number | `10` | Itens por página (máx. 50) |
+| `status` | string | — | Filtra: `draft`, `pending`, `signed`, `archived` |
+| `search` | string | — | Busca no título |
 
-**Query Params:**
-- `page` (opcional): Página atual (default: 1)
-- `limit` (opcional): Itens por página (max: 50, default: 10)
-- `status` (opcional): Filtra por status (draft, pending, signed, archived)
-- `search` (opcional): Busca no título
+### `POST /api/documents` — `multipart/form-data`
 
-**Resposta:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid",
-      "title": "Contrato de Serviços",
-      "owner_id": "uuid",
-      "file_url": "https://...",
-      "file_path": "user-id/timestamp-file.pdf",
-      "file_hash": "sha256-hash",
-      "status": "draft",
-      "version": 1,
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "meta": {
-    "total": 25,
-    "page": 1,
-    "limit": 10
-  }
-}
-```
+| Campo | Obrigatório | Descrição |
+|---|---|---|
+| `file` | ✅ | Arquivo PDF (máx. 10MB) |
+| `title` | ✅ | Título do documento (1–255 chars) |
+| `status` | ❌ | Status inicial (default: `draft`) |
 
-### Criar Documento
-
-```http
-POST /documents
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-
-file: <arquivo.pdf>
-title: "Título do Documento"
-status: "draft" (opcional)
-```
-
-**Restrições:**
-- Apenas arquivos PDF
-- Tamanho máximo: 10MB
-
-### Obter Documento
-
-```http
-GET /documents/:id
-Authorization: Bearer <token>
-```
-
-### Atualizar Documento
-
-```http
-PATCH /documents/:id
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-
-title: "Novo Título" (opcional)
-status: "signed" (opcional)
-file: <novo-arquivo.pdf> (opcional)
-change_notes: "Notas sobre a mudança" (opcional)
-```
-
-**Nota:** Ao enviar um novo arquivo, uma nova versão é criada automaticamente.
-
-### Deletar Documento
-
-```http
-DELETE /documents/:id
-Authorization: Bearer <token>
-```
+### `GET    /api/documents/:id`
+### `PATCH  /api/documents/:id` — mesmos campos do POST, todos opcionais
+### `DELETE /api/documents/:id`
 
 ---
 
 ## 📜 Versionamento
 
-### Listar Versões
+### `GET /api/documents/:id/versions`
 
-```http
-GET /documents/:id/versions
-Authorization: Bearer <token>
-```
-
-**Resposta:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid",
-      "document_id": "uuid",
-      "version": 2,
-      "file_url": "https://...",
-      "file_path": "user-id/timestamp-v2.pdf",
-      "file_hash": "sha256-hash",
-      "created_by": "uuid",
-      "created_at": "2024-01-15T11:00:00Z",
-      "change_notes": "Atualização de valores"
-    },
-    {
-      "id": "uuid",
-      "document_id": "uuid",
-      "version": 1,
-      "file_url": "https://...",
-      "file_path": "user-id/timestamp-v1.pdf",
-      "file_hash": "sha256-hash",
-      "created_by": "uuid",
-      "created_at": "2024-01-15T10:30:00Z",
-      "change_notes": "Versão inicial"
-    }
-  ],
-  "meta": {
-    "total": 2
-  }
-}
-```
+Retorna todas as versões em ordem decrescente.
 
 ---
 
-## 🔐 Verificação de Integridade
+## 🔒 Verificação de Integridade
 
-### Verificar Hash do Documento
+### `POST /api/documents/:id/verify` — `multipart/form-data`
 
-```http
-POST /documents/:id/verify
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
+Envia um arquivo PDF e verifica se o hash SHA-256 bate com o armazenado.
 
-file: <arquivo-para-verificar.pdf>
-```
-
-**Resposta (Hash válido):**
 ```json
 {
   "success": true,
@@ -334,75 +246,62 @@ file: <arquivo-para-verificar.pdf>
 }
 ```
 
-**Resposta (Hash inválido):**
-```json
-{
-  "success": true,
-  "data": {
-    "valid": false,
-    "document_id": "uuid",
-    "version": 2,
-    "stored_hash": "abc123...",
-    "provided_hash": "xyz789...",
-    "message": "ALERTA: O arquivo foi alterado! Os hashes não correspondem."
-  }
-}
-```
+### `GET /api/documents/:id/verify`
 
-### Obter Informações do Hash
-
-```http
-GET /documents/:id/verify
-Authorization: Bearer <token>
-```
+Retorna as informações do hash sem realizar comparação.
 
 ---
 
 ## 🔗 Webhooks
 
-### Eventos Disponíveis
+### `POST /api/webhooks`
 
-| Evento | Descrição |
-|--------|-----------|
+Endpoint receptor de eventos. Requer o header:
+```http
+X-Webhook-Secret: <WEBHOOK_SECRET>
+```
+
+### Eventos
+
+| Evento | Disparado quando |
+|---|---|
 | `document.created` | Novo documento criado |
 | `document.updated` | Documento atualizado |
 | `document.deleted` | Documento deletado |
-| `document.signed` | Documento foi assinado (status: signed) |
-| `version.created` | Nova versão criada |
+| `document.signed` | Status alterado para `signed` |
+| `version.created` | Novo arquivo enviado (nova versão) |
 
-### Payload do Webhook
+### Payload
 
 ```json
 {
   "event": "document.signed",
   "document_id": "uuid",
-  "timestamp": "2024-01-15T14:30:00Z",
-  "data": {
-    "signed_by": "user-uuid",
-    "signed_at": "2024-01-15T14:30:00Z"
-  }
+  "timestamp": "2026-03-14T01:00:00Z",
+  "data": { "signed_by": "user-uuid", "signed_at": "..." }
 }
 ```
 
-### Headers
+### Headers enviados
 
 ```http
-X-Webhook-Signature: sha256=signature
+X-Webhook-Signature: <hmac-sha256-do-payload>
 X-Webhook-Event: document.signed
+X-Webhook-Secret: <secret>
 Content-Type: application/json
 ```
 
-### Verificação de Assinatura
+### Verificar assinatura no receptor
 
 ```javascript
 const crypto = require('crypto');
 
-function verifySignature(payload, signature, secret) {
+function verifyWebhook(payload, signature, secret) {
   const expected = crypto
     .createHmac('sha256', secret)
     .update(payload)
     .digest('hex');
-  
+
   return crypto.timingSafeEqual(
     Buffer.from(signature),
     Buffer.from(expected)
@@ -412,35 +311,27 @@ function verifySignature(payload, signature, secret) {
 
 ---
 
-## ❌ Erros
-
-### Formato de Erro
+## ❌ Códigos de Erro
 
 ```json
 {
   "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Descrição do erro",
-    "details": { }
-  }
+  "error": { "code": "ERROR_CODE", "message": "Descrição" }
 }
 ```
 
-### Códigos de Erro
-
 | Código | HTTP | Descrição |
-|--------|------|-----------|
-| `UNAUTHORIZED` | 401 | Token inválido ou ausente |
-| `FORBIDDEN` | 403 | Sem permissão para acessar recurso |
-| `NOT_FOUND` | 404 | Recurso não encontrado |
-| `BAD_REQUEST` | 400 | Requisição inválida |
-| `VALIDATION_ERROR` | 400 | Dados de entrada inválidos |
-| `FILE_REQUIRED` | 400 | Arquivo obrigatório não enviado |
+|---|---|---|
+| `UNAUTHORIZED` | 401 | Token ausente ou inválido |
+| `FORBIDDEN` | 403 | Sem permissão |
+| `NOT_FOUND` | 404 | Recurso não existe |
+| `VALIDATION_ERROR` | 400 | Dados inválidos (Zod) |
+| `FILE_REQUIRED` | 400 | Arquivo não enviado |
 | `INVALID_FILE_TYPE` | 400 | Apenas PDF aceito |
-| `FILE_TOO_LARGE` | 400 | Arquivo > 10MB |
+| `FILE_TOO_LARGE` | 400 | Arquivo acima de 10MB |
 | `NO_HASH_REGISTERED` | 400 | Documento sem hash para verificar |
-| `INTERNAL_ERROR` | 500 | Erro interno do servidor |
+| `RATE_LIMIT_EXCEEDED` | 429 | Muitas requisições |
+| `INTERNAL_ERROR` | 500 | Erro interno |
 
 ---
 
@@ -449,33 +340,48 @@ function verifySignature(payload, signature, secret) {
 ```
 docvault-api/
 ├── app/
+│   ├── page.tsx                    # Dashboard UI
+│   ├── layout.tsx
+│   ├── globals.css
+│   ├── components/
+│   │   ├── Toast.tsx
+│   │   └── UploadModal.tsx
 │   └── api/
 │       ├── auth/
-│       │   ├── signup/route.ts
 │       │   ├── login/route.ts
 │       │   ├── logout/route.ts
 │       │   ├── me/route.ts
-│       │   └── refresh/route.ts
-│       └── documents/
-│           ├── route.ts
-│           └── [id]/
-│               ├── route.ts
-│               ├── versions/route.ts
-│               └── verify/route.ts
+│       │   ├── refresh/route.ts
+│       │   └── signup/route.ts
+│       ├── documents/
+│       │   ├── route.ts
+│       │   └── [id]/
+│       │       ├── route.ts
+│       │       ├── verify/route.ts
+│       │       └── versions/route.ts
+│       └── webhooks/route.ts
 ├── lib/
-│   ├── supabase.ts       # Clientes Supabase
-│   ├── crypto.ts         # Hash SHA-256 & utilitários
-│   ├── storage.ts        # Operações de storage
-│   ├── auth.ts           # Funções de autenticação
-│   ├── api-response.ts   # Helpers de resposta
-│   └── webhook.ts        # Disparo de webhooks
+│   ├── api-response.ts             # Helpers de resposta padronizada
+│   ├── auth.ts                     # getCurrentUser, requireAuth
+│   ├── crypto.ts                   # SHA-256, HMAC, tokens seguros
+│   ├── ratelimit.ts                # Upstash rate limiting
+│   ├── storage.ts                  # Upload/download Supabase Storage
+│   ├── supabase.ts                 # Clientes server/service/browser
+│   └── webhook.ts                  # Disparo de eventos
+├── tests/
+│   ├── setup.ts
+│   ├── api/documents.test.ts
+│   └── lib/
+│       ├── api-response.test.ts
+│       └── crypto.test.ts
 ├── types/
-│   ├── index.ts          # Tipos da aplicação
-│   └── supabase.ts       # Tipos do Supabase
+│   ├── index.ts
+│   └── supabase.ts
 ├── supabase/
-│   ├── schema.sql        # Schema do banco
-│   └── seed.sql          # Dados de teste
-├── middleware.ts         # Auth middleware
+│   ├── schema.sql                  # Schema v2 completo
+│   └── seed.sql
+├── middleware.ts                   # Auth + Rate Limiting
+├── vitest.config.ts
 ├── next.config.js
 ├── tsconfig.json
 └── package.json
@@ -483,34 +389,14 @@ docvault-api/
 
 ---
 
-## 🚀 Deploy
+## 🚢 Deploy na Vercel
 
-### Vercel
-
-1. Conecte seu repositório GitHub na Vercel
-2. Configure as variáveis de ambiente
-3. Deploy automático a cada push
-
-```bash
-# Deploy manual (opcional)
-npm i -g vercel
-vercel --prod
-```
+1. Conecte o repositório em [vercel.com](https://vercel.com)
+2. Adicione as variáveis de ambiente no painel da Vercel
+3. Deploy automático a cada push na `main`
 
 ---
 
 ## 📝 Licença
 
-MIT - Sinta-se livre para usar e modificar!
-
----
-
-## 👨‍💻 Autor
-
-Desenvolvido como desafio técnico de full-stack com foco em segurança e cloud.
-
----
-
-## 📞 Suporte
-
-Para dúvidas ou problemas, abra uma issue no repositório.\"# Deploy timestamp: $(date)\" 
+MIT — livre para usar e adaptar.
