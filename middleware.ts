@@ -24,7 +24,7 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
-function rateLimitResponse(retryAfter: number) {
+function rateLimitResponse(retryAfter: number, limit: number, reset: number) {
   return NextResponse.json(
     {
       success: false,
@@ -38,8 +38,9 @@ function rateLimitResponse(retryAfter: number) {
       status: 429,
       headers: {
         'Retry-After': String(retryAfter),
-        'X-RateLimit-Limit': '0',
+        'X-RateLimit-Limit': String(limit),
         'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(reset),
       },
     }
   );
@@ -48,6 +49,11 @@ function rateLimitResponse(retryAfter: number) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip = getClientIp(request);
+  const rateHeaders = new Headers();
+  const withRateHeaders = (response: NextResponse) => {
+    rateHeaders.forEach((value, key) => response.headers.set(key, value));
+    return response;
+  };
 
   // --- Rate Limiting ---
   // Apenas aplicar se Upstash estiver configurado
@@ -62,15 +68,14 @@ export async function middleware(request: NextRequest) {
       const { success, reset, remaining, limit } = await limiter.limit(identifier);
 
       if (!success) {
-        const retryAfter = Math.ceil((reset - Date.now()) / 1000);
-        return rateLimitResponse(retryAfter);
+        const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+        return rateLimitResponse(retryAfter, limit, reset);
       }
 
       // Adiciona headers de rate limit informativos na resposta
-      const nextResponse = NextResponse.next();
-      nextResponse.headers.set('X-RateLimit-Limit', String(limit));
-      nextResponse.headers.set('X-RateLimit-Remaining', String(remaining));
-      nextResponse.headers.set('X-RateLimit-Reset', String(reset));
+      rateHeaders.set('X-RateLimit-Limit', String(limit));
+      rateHeaders.set('X-RateLimit-Remaining', String(remaining));
+      rateHeaders.set('X-RateLimit-Reset', String(reset));
     } catch {
       // Em caso de falha do Redis, não bloquear a requisição (fail open)
       console.warn('[RateLimit] Upstash indisponível, pulando rate limit.');
@@ -82,7 +87,7 @@ export async function middleware(request: NextRequest) {
   const isAlwaysPublic = ALWAYS_PUBLIC.some((route) => pathname.startsWith(route));
 
   if (isPublicRoute || isAlwaysPublic) {
-    return NextResponse.next();
+    return withRateHeaders(NextResponse.next());
   }
 
   // --- Rotas protegidas: verificação de sessão ---
@@ -117,22 +122,22 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (error || !user) {
-      return NextResponse.json(
+      return withRateHeaders(NextResponse.json(
         {
           success: false,
           error: { code: 'UNAUTHORIZED', message: 'Autenticação necessária' },
         },
         { status: 401 }
-      );
+      ));
     }
 
     response.headers.set('X-User-Id', user.id);
     response.headers.set('X-User-Email', user.email || '');
 
-    return response;
+    return withRateHeaders(response);
   }
 
-  return NextResponse.next();
+  return withRateHeaders(NextResponse.next());
 }
 
 export const config = {

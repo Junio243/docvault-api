@@ -15,14 +15,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # npm install em vez de npm ci: o lockfile committed está dessincronizado
-      # (vitest 4.x no lock vs 2.x no package.json). Rode `npm install` local e commite o lock para voltar a npm ci.
-      - run: npm install --no-audit --no-fund
+      - run: npm ci
       - name: Lint
         run: npm run lint
       - name: Type check
         run: npm run type-check
-        continue-on-error: true
       - name: Tests
         run: npm test
       - name: Build

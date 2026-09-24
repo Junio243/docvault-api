@@ -1,5 +1,5 @@
 import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+import { Redis } from '@upstash/redis/cloudflare';
 
 // Rate limiter para autenticação (mais restritivo)
 export const authRatelimit = new Ratelimit({

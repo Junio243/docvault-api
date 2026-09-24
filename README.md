@@ -10,16 +10,6 @@ API REST completa para gerenciamento seguro de documentos — com autenticação
 
 ---
 
-## 📸 Screenshots
-
-> Prints do dashboard em `docs/screenshots/` (`dashboard.png`, `upload.png`, `verify.png`).
-
-| Dashboard | Upload | Verify |
-|---|---|---|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Upload](docs/screenshots/upload.png) | ![Verify](docs/screenshots/verify.png) |
-
----
-
 ## 🚀 Stack
 
 | Camada | Tecnologia |
@@ -43,7 +33,8 @@ API REST completa para gerenciamento seguro de documentos — com autenticação
 - Renovação automática de tokens
 
 ### 📄 Documentos
-- Upload de PDFs (máx. 10MB)
+- Upload de PDFs (máx. 10MB), com rejeição de arquivos vazios e verificação do cabeçalho PDF
+- Remoção do upload incompleto quando a criação do documento falha
 - CRUD completo com autorização por ownership
 - Filtros por status e busca por título
 - Paginação configurável
@@ -213,10 +204,10 @@ Authorization: Bearer <access_token>
 
 | Param | Tipo | Default | Descrição |
 |---|---|---|---|
-| `page` | number | `1` | Página |
-| `limit` | number | `10` | Itens por página (máx. 50) |
+| `page` | number | `1` | Inteiro positivo; valores inválidos retornam 400 |
+| `limit` | number | `10` | Inteiro positivo; valores acima de 50 são limitados a 50 |
 | `status` | string | — | Filtra: `draft`, `pending`, `signed`, `archived` |
-| `search` | string | — | Busca no título |
+| `search` | string | — | Busca no título; até 255 caracteres |
 
 ### `POST /api/documents` — `multipart/form-data`
 

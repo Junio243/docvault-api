@@ -23,3 +23,4 @@ export async function GET(request: NextRequest) {
     return commonErrors.internalError();
   }
 }
+export const dynamic = 'force-dynamic';
