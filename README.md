@@ -1,8 +1,22 @@
 # 📄 DocVault API
 
+[![CI](https://github.com/Junio243/docvault-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Junio243/docvault-api/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://docvault-api-cl21.vercel.app/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 API REST completa para gerenciamento seguro de documentos — com autenticação JWT, upload de PDF, versionamento automático, verificação de integridade via hash SHA-256, rate limiting e dashboard web.
 
 🔗 **Demo em produção:** [docvault-api-cl21.vercel.app](https://docvault-api-cl21.vercel.app)
+
+---
+
+## 📸 Screenshots
+
+> Prints do dashboard em `docs/screenshots/` (`dashboard.png`, `upload.png`, `verify.png`).
+
+| Dashboard | Upload | Verify |
+|---|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Upload](docs/screenshots/upload.png) | ![Verify](docs/screenshots/verify.png) |
 
 ---
 
