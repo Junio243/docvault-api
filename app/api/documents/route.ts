@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { uploadFile } from '@/lib/storage';
+import { uploadFile, deleteFile } from '@/lib/storage';
 import { generateFileHash } from '@/lib/crypto';
 import { triggerWebhook } from '@/lib/webhook';
 import { successResponse, errorResponse, commonErrors } from '@/lib/api-response';
@@ -13,8 +13,19 @@ type DocRow = Database['public']['Tables']['documents']['Row'];
 type VersionRow = Database['public']['Tables']['document_versions']['Row'];
 
 const createDocumentSchema = z.object({
-  title: z.string().min(1, 'Título é obrigatório').max(255, 'Título muito longo'),
+  title: z.string().trim().min(1, 'Título é obrigatório').max(255, 'Título muito longo'),
   status: z.enum(['draft', 'pending', 'signed', 'archived']).optional(),
+});
+
+const positiveInteger = z.string().regex(/^[1-9]\d*$/).transform(Number)
+  .refine(Number.isSafeInteger, 'Número fora do intervalo permitido');
+const listDocumentsSchema = z.object({
+  page: positiveInteger.default('1'),
+  limit: positiveInteger.default('10').transform(value => Math.min(value, 50)),
+  status: z.enum(['draft', 'pending', 'signed', 'archived']).optional(),
+  search: z.string().trim().max(255).optional(),
+}).refine(({ page, limit }) => Number.isSafeInteger(page * limit), {
+  message: 'Paginação fora do intervalo permitido', path: ['page'],
 });
 
 /**
@@ -29,10 +40,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
+    const parsedQuery = listDocumentsSchema.safeParse(Object.fromEntries(searchParams));
+    if (!parsedQuery.success) {
+      return commonErrors.validationError(parsedQuery.error.flatten().fieldErrors);
+    }
+    const { page, limit, status, search } = parsedQuery.data;
 
     const supabase = createServerSupabaseClient();
     
@@ -104,7 +116,7 @@ export async function POST(request: NextRequest) {
     const { title, status } = parsed.data;
 
     // Validação do arquivo
-    if (!file) {
+    if (!file || typeof file === 'string') {
       return errorResponse('FILE_REQUIRED', 'Arquivo é obrigatório', 400);
     }
 
@@ -114,6 +126,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Valida tamanho (max 10MB)
+    if (file.size === 0) {
+      return errorResponse('EMPTY_FILE', 'O arquivo PDF está vazio', 400);
+    }
     if (file.size > 10 * 1024 * 1024) {
       return errorResponse('FILE_TOO_LARGE', 'Arquivo deve ter no máximo 10MB', 400);
     }
@@ -121,6 +136,9 @@ export async function POST(request: NextRequest) {
     // Converte arquivo para buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    if (buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      return errorResponse('INVALID_FILE_TYPE', 'O conteúdo do arquivo não é um PDF', 400);
+    }
 
     // Gera hash do arquivo
     const fileHash = generateFileHash(buffer);
@@ -147,6 +165,11 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[Documents] Erro ao criar documento:', error);
+      try {
+        await deleteFile(path);
+      } catch (cleanupError) {
+        console.error('[Documents] Erro ao remover upload incompleto:', cleanupError);
+      }
       return commonErrors.internalError('Erro ao criar documento');
     }
 
