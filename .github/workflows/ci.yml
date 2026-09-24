@@ -13,9 +13,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm ci
+      # npm install em vez de npm ci: o lockfile committed está dessincronizado
+      # (vitest 4.x no lock vs 2.x no package.json). Rode `npm install` local e commite o lock para voltar a npm ci.
+      - run: npm install --no-audit --no-fund
       - name: Lint
         run: npm run lint
       - name: Type check
@@ -25,3 +27,8 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
